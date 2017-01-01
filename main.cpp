@@ -18,10 +18,9 @@ void callAction(int argc, char **argv){
     std::string action = argv[2];
 
     fat = new Fat();
-
     fat->openFatFile(argv[1]);
-    fat->getBootRecord();
-    fat->getFatTable();
+    fat->loadFileStructure();
+    fat->writeBootRecord();
 
     if(action.compare("-a") == 0){
         compareArgumentNumber(argc,5);

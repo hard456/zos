@@ -50,7 +50,7 @@ private:
     FILE *f;
     struct boot_record *p_boot_record;
     std::vector<unsigned int>fatTable;
-    //std::vector<malloc(sizeof(char) * CLUSTER_SIZE)> cluster;
+    std::vector<std::string>cluster;
 
 public:
 
@@ -64,6 +64,8 @@ public:
     void setFatTable();
     void getVectorCluster();
     void setVectorCluster();
+    void loadFileStructure();
+    void writeBootRecord();
 
 };
 
