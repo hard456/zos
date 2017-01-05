@@ -19,8 +19,8 @@ void callAction(int argc, char **argv){
 
     fat = new Fat();
     fat->openFatFile(argv[1]);
-    fat->loadFileStructure();
-    fat->writeBootRecord();
+    fat->loadFile();
+//    fat->writeBootRecord();
 
     if(action.compare("-a") == 0){
         compareArgumentNumber(argc,5);
