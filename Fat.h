@@ -77,7 +77,7 @@ public:
     int getParentIndex(std::string name);
     int getFreeCluster();
     bool isFolderEmpty();
-    bool deleteFolder(std::string filename);
+    void deleteFolder(std::string filename);
     void setRootPosition();
 };
 

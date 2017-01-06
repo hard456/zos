@@ -48,7 +48,7 @@ void Fat::loadFatTable() {
                 else { printf("%d \n", fatTable.at(i)); }
             } else {
                 if (fatTable.at(i) != (int32_t) *fat_item) {
-                    std::cout << "FAT 0 at index " << i << "doest not equal with FAT " << j << "." << std::endl;
+                    std::cout << "FAT 0 at index " << i << " does not equal with FAT " << j << "." << std::endl;
                 }
             }
         }
@@ -292,13 +292,18 @@ bool Fat::isFolderEmpty(){
     return true;
 }
 
-bool Fat::deleteFolder(std::string filename) {
+void Fat::deleteFolder(std::string filename) {
+    if(parentIndex == -1){
+        parentIndex = 0;
+    }
+    std::cout << parentIndex;
     int foldePosition=0;
     fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*parentIndex,SEEK_SET);
     loadRootDirectory();
     for (int i = 0; i < dir.size(); i++) {
         if(dir.at(i).file_name == filename){
             foldePosition = i;
+            fatTable.at(dir.at(i).start_cluster) = FAT_UNUSED;
             break;
         }
     }
@@ -310,4 +315,5 @@ bool Fat::deleteFolder(std::string filename) {
 
 void Fat::setRootPosition() {
     fseek(f,rootDirectoryPosition,SEEK_SET);
+
 }

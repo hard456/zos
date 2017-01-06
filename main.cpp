@@ -76,7 +76,6 @@ void callAction(int argc, char **argv){
                         newPath += (path.at(i)+"/");
                     }
                 }
-                std::cout << newPath;
                 fat->setRootPosition();
                 fat->loadRootDirectory();
                 fat->checkPath((char *) newPath.c_str());
