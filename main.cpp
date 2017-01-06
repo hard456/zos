@@ -38,30 +38,60 @@ void callAction(int argc, char **argv){
         int index = fat->checkPath(argv[3]);
         if(index == 1){
             std::cout << fat->filename << " ";
-            fat->fileFatIndexes(fat->startIndex);
+            fat->printfFileClusterIndexes(fat->startIndex);
         }
-        else if(index == -1 || index == 0){
+        else if(index == -1 || index == 0 || index == -2){
             std::cout << "PATH NOT FOUND" << std::endl;
         }
     }
     else if(action.compare("-m") == 0){
         compareArgumentNumber(argc,5);
         int index = fat->checkPath(argv[4]);
-        if(index == 0){
-            fat->addFolder(argv[3],argv[4]);
+        if(index == 0 || index == -2){
+            if(fat->addFolder(argv[3])){
+                std::cout << "OK" << std::endl;
+            }
+            else{
+                std::cout << "DIRECTORY IS FULL" << std::endl;
+            }
         }
         else if(index == -1 || index == 1){
             std::cout << "PATH NOT FOUND" << std::endl;
         }
     }
     else if(action.compare("-r") == 0){
+        std::string filename;
         compareArgumentNumber(argc,4);
+        std::string newPath;
         int index = fat->checkPath(argv[3]);
         if(index == 0){
+            filename = fat->filename;
+            if(fat->isFolderEmpty()){
+                std::vector<std::string> path = fat->getPathVector(argv[3]);
+                for (int i = 0; i < path.size()-1; ++i) {
+                    if(i == 0){
+                        newPath += (path.at(i));
+                    }
+                    else{
+                        newPath += (path.at(i)+"/");
+                    }
+                }
+                std::cout << newPath;
+                fat->setRootPosition();
+                fat->loadRootDirectory();
+                fat->checkPath((char *) newPath.c_str());
+                fat->deleteFolder(filename);
+            }
+            else{
+                std::cout << "not clear";
+            }
 
         }
         else if(index == -1){
             std::cout << "PATH NOT FOUND" << std::endl;
+        }
+        else if(index == -2){
+            std::cout << "YOU CAN NOT DELETE ROOT" << std::endl;
         }
     }
     else if(action.compare("-l") == 0){
@@ -71,7 +101,7 @@ void callAction(int argc, char **argv){
             std::cout << fat->filename << ": ";
             fat->printFileContent(fat->startIndex);
         }
-        else if(index == -1 || index == 0){
+        else if(index == -1 || index == 0 || index == -2){
             std::cout << "PATH NOT FOUND" << std::endl;
         }
     }

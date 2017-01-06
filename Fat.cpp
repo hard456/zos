@@ -132,6 +132,15 @@ std::vector<std::string> Fat::getPathVector(char *file) {
     std::string item;
     std::vector<std::string> path;
     for (int i = 0; i < strlen(file); i++) {
+        if(i == 0){
+            if(file[i] == '/'){
+                path.push_back("/");
+                continue;
+            }
+            else if(file[i] != '/'){
+                path.push_back("/");
+            }
+        }
         if (file[i] == '/' && item == "") {
             continue;
         } else if (i == strlen(file) - 1) {
@@ -159,11 +168,17 @@ int Fat::checkPath(char *file) {
     path = getPathVector(file);
     int actualClusterPosition = 0;
     parentIndex = path.size()-2;
-
+    if(path.size()-1 == 0){
+        return -2;
+    }
     for (int i = 0; i < path.size(); i++) {
+        if(path.at(i) == "/"){
+            parentIndex = getParentIndex(path.at(i+1));
+            continue;
+        }
         for (int j = 0; j < dir.size(); j++) {
             if (path.at(i) == dir.at(j).file_name) {
-                if( i == (path.size()-2)){
+                if( i == (path.size()-1)){
                     parentIndex = dir.at(j).start_cluster;
                 }
                 else{
@@ -201,7 +216,7 @@ bool Fat::isFolderEmpty(int clusterIndex) {
 
 }
 
-void Fat::fileFatIndexes(int index) {
+void Fat::printfFileClusterIndexes(int index) {
     while(true){
         if(fatTable.at(index) == FAT_FILE_END){
             printf("%d",index);
@@ -213,6 +228,86 @@ void Fat::fileFatIndexes(int index) {
     }
 }
 
-void Fat::addFolder(char *name, char *path) {
-    std::cout << parentIndex << std::endl;
+bool Fat::addFolder(char *newFolder) {
+    int adrEmptyIndex;
+    int cluster;
+    int indexInputCluster = parentIndex;
+    if(parentIndex == -1){
+        indexInputCluster = 0;
+    }
+    fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*indexInputCluster,SEEK_SET);
+    loadRootDirectory();
+    fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*indexInputCluster,SEEK_SET);
+    for (int i = 0; i < dir.size(); i++) {
+        if(dir.at(i).file_name[0] == '\0'){
+            adrEmptyIndex = i;
+            break;
+        }
+    }
+    fseek(f,sizeof(struct directory)*adrEmptyIndex,SEEK_CUR);
+    struct directory adr;
+    memset(adr.file_name,'\0',sizeof(adr.file_name));
+    strcpy(adr.file_name, newFolder);
+    adr.size = 0;
+    adr.isFile = 0;
+    if((cluster = getFreeCluster()) != -1){
+        adr.start_cluster = cluster;
+    }
+    else{
+        return false;
+    }
+    fwrite(&adr, sizeof(adr), 1, f);
+    return true;
+}
+
+int Fat::getParentIndex(std::string name) {
+    for (int i = 0; i < dir.size(); i++) {
+        if(dir.at(i).file_name == name){
+            return dir.at(i).start_cluster;
+        }
+    }
+}
+
+int Fat::getFreeCluster() {
+    for (int i = 0; i < fatTable.size(); i++) {
+        if(fatTable.at(i) == FAT_UNUSED){
+            fatTable.at(i) = FAT_DIRECTORY;
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool Fat::isFolderEmpty(){
+    fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*parentIndex,SEEK_SET);
+    loadRootDirectory();
+    char *positionInCluster = (char*) malloc(sizeof(p_boot_record->cluster_count));
+    fread(positionInCluster, sizeof(p_boot_record->cluster_count), 1, f);
+    for (int i = 0; i < p_boot_record->cluster_count; i++) {
+        if(*positionInCluster != '\0'){
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool Fat::deleteFolder(std::string filename) {
+    int foldePosition=0;
+    fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*parentIndex,SEEK_SET);
+    loadRootDirectory();
+    for (int i = 0; i < dir.size(); i++) {
+        if(dir.at(i).file_name == filename){
+            foldePosition = i;
+            break;
+        }
+    }
+    fseek(f,sizeof(struct directory)*(foldePosition),SEEK_CUR);
+    struct directory *adr = (struct directory *) malloc(sizeof(struct directory));
+    fwrite(adr, sizeof(struct directory), 1, f);
+    std::cout << "OK" << std::endl;
+}
+
+void Fat::setRootPosition() {
+    fseek(f,rootDirectoryPosition,SEEK_SET);
 }

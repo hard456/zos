@@ -20,10 +20,10 @@ private:
     static const int32_t CLUSTER_COUNT = 251;
 
     //definice na vyznam hodnot FAT tabulky
-    const int32_t FAT_UNUSED = INT32_MAX - 1;
-    const int32_t FAT_FILE_END = INT32_MAX - 2;
-    const int32_t FAT_BAD_CLUSTER = INT32_MAX - 3;
-    const int32_t FAT_DIRECTORY = INT32_MAX - 4;
+    static const int32_t FAT_UNUSED = INT32_MAX - 1;
+    static const int32_t FAT_FILE_END = INT32_MAX - 2;
+    static const int32_t FAT_BAD_CLUSTER = INT32_MAX - 3;
+    static const int32_t FAT_DIRECTORY = INT32_MAX - 4;
 
     //272B
     struct boot_record {
@@ -72,8 +72,13 @@ public:
     int checkPath(char *file);
     void tree();
     bool isFolderEmpty(int clusterIndex);
-    void fileFatIndexes(int index);
-    void addFolder(char *name, char *path);
+    void printfFileClusterIndexes(int index);
+    bool addFolder(char *newFolder);
+    int getParentIndex(std::string name);
+    int getFreeCluster();
+    bool isFolderEmpty();
+    bool deleteFolder(std::string filename);
+    void setRootPosition();
 };
 
 
