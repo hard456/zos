@@ -19,8 +19,6 @@ private:
     static const int16_t CLUSTER_SIZE = 256;
     static const int32_t CLUSTER_COUNT = 251;
 
-    bool newfile;
-
     //definice na vyznam hodnot FAT tabulky
     const int32_t FAT_UNUSED = INT32_MAX - 1;
     const int32_t FAT_FILE_END = INT32_MAX - 2;
@@ -37,8 +35,8 @@ private:
         char signature[9];                        //pro vstupni data od vyucujicich konzistence FAT - "OK","NOK","FAI" - v poradku / FAT1 != FAT2 != FATx / FAIL - ve FAT1 == FAT2 == FAT3, ale obsahuje chyby, nutna kontrola
     };
 
-//struktura na root directory - nova verze
-    struct root_directory{
+
+    struct directory{
         char file_name[13];             //8+3 format + '/0'
         bool isFile;                //0 = soubor, 1 = adresar
         int32_t size;                 //pocet znaku v souboru
@@ -48,11 +46,16 @@ private:
     FILE *f;
     struct boot_record *p_boot_record;
     std::vector<int32_t> fatTable;
-    std::vector<std::string> cluster;
+    std::vector<std::string> clusterContent;
+    int rootDirectoryPosition;
+
 
 public:
-
-
+    std::vector<directory> dir;
+    bool newfile;
+    int startIndex;
+    std::string filename;
+    int parentIndex;
 
     void openFatFile(char* filename);
     void closeFatFile();
@@ -60,11 +63,17 @@ public:
     void setBootRecord();
     void loadFatTable();
     void setFatTable();
-    void loadVectorCluster();
-    void setVectorCluster();
     void loadFile();
     void writeBootRecord();
     void printfBootRecord();
+    void loadRootDirectory();
+    void printFileContent(int fatPosition);
+    std::vector<std::string> getPathVector(char *file);
+    int checkPath(char *file);
+    void tree();
+    bool isFolderEmpty(int clusterIndex);
+    void fileFatIndexes(int index);
+    void addFolder(char *name, char *path);
 };
 
 
