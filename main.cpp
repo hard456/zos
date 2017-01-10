@@ -6,6 +6,12 @@
 
 Fat* fat;
 
+/**
+ * Porovná zadaný počet argumentů s potřebným počtem pro
+ * příslušnou akci
+ * @param argc počet argumentů
+ * @param requiredNumber požadovaný počet argumentů
+ */
 void compareArgumentNumber(int argc, int requiredNumber){
     if(argc != requiredNumber){
         fat->closeFatFile();
@@ -14,31 +20,64 @@ void compareArgumentNumber(int argc, int requiredNumber){
     }
 }
 
+/**
+ * Zavolá příšlé operace pro zpracovaní zadané akce
+ * @param argc počet argumentů
+ * @param argv argumenty
+ */
 void callAction(int argc, char **argv){
     std::string action = argv[2];
 
     fat = new Fat();
     fat->openFatFile(argv[1]);
     fat->loadFile();
-    if(!fat->newfile){
-        fat->loadRootDirectory();
-    }
-//    fat->writeBootRecord();
+    fat->loadDirectory();
 
     if(action.compare("-a") == 0){
         compareArgumentNumber(argc,5);
-
+        int index = fat->checkPath(argv[4]);
+        if(index == -1 || index == 1){
+            std::cout << "PATH NOT FOUND" << std::endl;
+        }
+        else{
+            if(fat->addFile(argv[3])){
+                std::cout << "OK" << std::endl;
+            }
+        }
     }
     else if(action.compare("-f") == 0){
         compareArgumentNumber(argc,4);
-
+        std::string filename;
+        int index = fat->checkPath(argv[3]);
+        std::string newPath;
+        int startFileCluster = fat->clusterStartIndex;
+        if(index == 1){
+            std::vector<std::string> path = fat->getPathVector(argv[3]);
+            for (int i = 0; i < path.size()-1; i++) {
+                if(i == 0){
+                    newPath += (path.at(i));
+                }
+                else{
+                    newPath += (path.at(i)+"/");
+                }
+            }
+            fat->setRootPosition();
+            fat->loadDirectory();
+            fat->checkPath((char *)newPath.c_str());
+            filename = path.at(path.size()-1);
+            int parentCluster = fat->clusterStartIndex;
+            fat->deleteFile(filename,startFileCluster);
+        }
+        else{
+            std::cout << "PATH NOT FOUND" << std::endl;
+        }
     }
     else if(action.compare("-c") == 0){
         compareArgumentNumber(argc,4);
         int index = fat->checkPath(argv[3]);
         if(index == 1){
             std::cout << fat->filename << " ";
-            fat->printfFileClusterIndexes(fat->startIndex);
+            fat->printfFileClusterIndexes(fat->clusterStartIndex);
         }
         else if(index == -1 || index == 0 || index == -2){
             std::cout << "PATH NOT FOUND" << std::endl;
@@ -50,9 +89,6 @@ void callAction(int argc, char **argv){
         if(index == 0 || index == -2){
             if(fat->addFolder(argv[3])){
                 std::cout << "OK" << std::endl;
-            }
-            else{
-                std::cout << "DIRECTORY IS FULL" << std::endl;
             }
         }
         else if(index == -1 || index == 1){
@@ -68,7 +104,7 @@ void callAction(int argc, char **argv){
             filename = fat->filename;
             if(fat->isFolderEmpty()){
                 std::vector<std::string> path = fat->getPathVector(argv[3]);
-                for (int i = 0; i < path.size()-1; ++i) {
+                for (int i = 0; i < path.size()-1; i++) {
                     if(i == 0){
                         newPath += (path.at(i));
                     }
@@ -77,12 +113,12 @@ void callAction(int argc, char **argv){
                     }
                 }
                 fat->setRootPosition();
-                fat->loadRootDirectory();
+                fat->loadDirectory();
                 fat->checkPath((char *) newPath.c_str());
                 fat->deleteFolder(filename);
             }
             else{
-                std::cout << "not clear";
+                std::cout << "FOLDER IS NOT EMPTY";
             }
 
         }
@@ -92,13 +128,16 @@ void callAction(int argc, char **argv){
         else if(index == -2){
             std::cout << "YOU CAN NOT DELETE ROOT" << std::endl;
         }
+        else if(index == 1){
+            std::cout << "YOU CAN NOT DELETE FILE" << std::endl;
+        }
     }
     else if(action.compare("-l") == 0){
         compareArgumentNumber(argc,4);
         int index = fat->checkPath(argv[3]);
         if(index == 1){
             std::cout << fat->filename << ": ";
-            fat->printFileContent(fat->startIndex);
+            fat->printFileContent(fat->clusterStartIndex);
         }
         else if(index == -1 || index == 0 || index == -2){
             std::cout << "PATH NOT FOUND" << std::endl;
@@ -106,16 +145,28 @@ void callAction(int argc, char **argv){
     }
     else if(action.compare("-p") == 0){
         compareArgumentNumber(argc,3);
+        if(!fat->isItemInFolder()){
+            std::cout << "EMPTY" << std::endl;
+        }
+        else{
+            fat->tree();
+        }
 
     }
     else{
         std::cout << "Wrong action argument." << std::endl;
-        fat->closeFatFile();
-        exit(EXIT_FAILURE);
     }
+    fat->writeBootRecord();
+    fat->writeFatTable();
     fat->closeFatFile();
 }
 
+/**
+ * Načte argumenty
+ * @param argc počet argumentů
+ * @param argv argumenty
+ * @return
+ */
 int main(int argc, char *argv[]) {
     if(argc < 3){
         std::cout << "Wrong number of arguments." << std::endl;

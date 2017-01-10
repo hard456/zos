@@ -53,9 +53,8 @@ private:
 public:
     std::vector<directory> dir;
     bool newfile;
-    int startIndex;
+    int clusterStartIndex;
     std::string filename;
-    int parentIndex;
 
     void openFatFile(char* filename);
     void closeFatFile();
@@ -66,19 +65,24 @@ public:
     void loadFile();
     void writeBootRecord();
     void printfBootRecord();
-    void loadRootDirectory();
+    void loadDirectory();
     void printFileContent(int fatPosition);
     std::vector<std::string> getPathVector(char *file);
     int checkPath(char *file);
     void tree();
-    bool isFolderEmpty(int clusterIndex);
     void printfFileClusterIndexes(int index);
     bool addFolder(char *newFolder);
-    int getParentIndex(std::string name);
+    int getClusterIndex(std::string name);
     int getFreeCluster();
     bool isFolderEmpty();
     void deleteFolder(std::string filename);
     void setRootPosition();
+    bool addFile(char *newFile);
+    std::vector<int> getFreeTableArray(int count);
+    void deleteFile(std::string fileName, int fileCluster);
+    void writeFatTable();
+    void writeFreeClusters();
+    bool isItemInFolder();
 };
 
 
