@@ -84,12 +84,7 @@ public:
     void writeFreeClusters();
     bool isItemInFolder();
     void printTreeItems();
-    void toUpperCase();
     int getNumberOfClusters(int file_size);
-
-    char *appendCharToCharArray(char *array, char a);
-
-    char *removeCharToCharArray(char *array);
 };
 
 
