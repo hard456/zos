@@ -251,11 +251,6 @@ int Fat::checkPath(char *file) {
     return -1;
 }
 
-void Fat::tree() {
-    fseek(f,rootDirectoryPosition,SEEK_SET);
-
-}
-
 /**
  * Vypíše indexy clusterů, kde leží soubor
  * @param index počáteční index souboru
@@ -581,5 +576,53 @@ bool Fat::isItemInFolder() {
     return false;
 }
 
+/**
+ * Funkce pro výpis struktury uložených dat ve fat souboru
+ */
+void Fat::tree(){
+    std::cout << "+ROOT" << std::endl;
+    escape.append("\t");
+    printTreeItems();
+}
 
+/**
+ *  Rekurzivní funkce pro výpis adresáře
+ */
+void Fat::printTreeItems(){
+    long tmp_position = 0;
+    int directory_items = p_boot_record->cluster_size / sizeof(directory);
+    directory *dir = (directory *) malloc(sizeof(directory));
+    for (int j = 0; j < directory_items; j++) {
+        fread(dir, sizeof(directory), 1, f);
+        if (dir->start_cluster!=0 && dir->isFile) {
+            printf("%s-%s %d %d\n", escape.c_str(), dir->file_name, dir->start_cluster, getNumberOfClusters(dir->size));
+        }else if(dir->start_cluster!=0){
+            printf("%s+%s\n",escape.c_str(),dir->file_name);
+            escape.append("\t");
+            tmp_position = ftell(f);
+            setRootPosition();
+            fseek(f, p_boot_record->cluster_size*dir->start_cluster, SEEK_CUR);
+            printTreeItems();
+            fseek(f, tmp_position, SEEK_SET);
+        }
+    }
+    escape = escape.substr(0, escape.size()-1);
+    printf("%s--\n", escape.c_str());
+    free(dir);
+}
 
+/**
+ * Vrátí počet clusterů souboru
+ * @param file_size velikost souboru
+ * @return počet clusterů
+ */
+int Fat::getNumberOfClusters(int file_size) {
+    if(file_size % p_boot_record->cluster_size == 0){
+        int fileClusterCount = file_size / p_boot_record->cluster_size;
+        return fileClusterCount;
+    }
+    else if(file_size / p_boot_record->cluster_size == 0){
+        int fileClusterCount = file_size / p_boot_record->cluster_size + 1;
+        return fileClusterCount;
+    }
+}

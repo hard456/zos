@@ -48,7 +48,7 @@ private:
     std::vector<int32_t> fatTable;
     std::vector<std::string> clusterContent;
     int rootDirectoryPosition;
-
+    std::string escape;
 
 public:
     std::vector<directory> dir;
@@ -83,6 +83,13 @@ public:
     void writeFatTable();
     void writeFreeClusters();
     bool isItemInFolder();
+    void printTreeItems();
+    void toUpperCase();
+    int getNumberOfClusters(int file_size);
+
+    char *appendCharToCharArray(char *array, char a);
+
+    char *removeCharToCharArray(char *array);
 };
 
 
