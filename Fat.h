@@ -6,7 +6,7 @@
 #include <string>
 #include <stdlib.h>
 #include <cmath>
-
+#include <deque>
 #include <vector>
 
 class Fat {
@@ -25,28 +25,33 @@ private:
     static const int32_t FAT_BAD_CLUSTER = INT32_MAX - 3;
     static const int32_t FAT_DIRECTORY = INT32_MAX - 4;
 
-    //272B
+
     struct boot_record {
-        char volume_descriptor[250];               //popis
-        int8_t fat_type;                             //typ FAT - pocet clusteru = 2^fat_type (priklad FAT 12 = 4096)
-        int8_t fat_copies;                           //kolikrat je za sebou v souboru ulozena FAT
-        int16_t cluster_size;                //velikost clusteru ve znacich (n x char) + '/0' - tedy 128 znamena 127 vyznamovych znaku + '/0'
-        int32_t cluster_count;               //pocet pouzitelnych clusteru (2^fat_type - reserved_cluster_count)
-        char signature[9];                        //pro vstupni data od vyucujicich konzistence FAT - "OK","NOK","FAI" - v poradku / FAT1 != FAT2 != FATx / FAIL - ve FAT1 == FAT2 == FAT3, ale obsahuje chyby, nutna kontrola
+        char volume_descriptor[250];
+        int8_t fat_type;
+        int8_t fat_copies;
+        int16_t cluster_size;
+        int32_t cluster_count;
+        char signature[9];
     };
 
 
     struct directory{
-        char file_name[13];             //8+3 format + '/0'
-        bool isFile;                //0 = soubor, 1 = adresar
-        int32_t size;                 //pocet znaku v souboru
-        int32_t start_cluster;     //cluster ve FAT, kde soubor zacina - POZOR v cislovani root_directory ma prvni cluster index 0 (viz soubor a.txt)
+        char file_name[13];
+        bool isFile;
+        int32_t size;
+        int32_t start_cluster;
+    };
+
+    struct dir_position{
+        directory dir;
+        int32_t parent;
+        int32_t old_cluster;
     };
 
     FILE *f;
     struct boot_record *p_boot_record;
     std::vector<int32_t> fatTable;
-    std::vector<std::string> clusterContent;
     int rootDirectoryPosition;
     std::string escape;
 
@@ -61,7 +66,7 @@ public:
     void loadBootRecord();
     void setBootRecord();
     void loadFatTable();
-    void setFatTable();
+    std::vector<int32_t> setFatTable();
     void loadFile();
     void writeBootRecord();
     void printfBootRecord();
@@ -85,6 +90,11 @@ public:
     bool isItemInFolder();
     void printTreeItems();
     int getNumberOfClusters(int file_size);
+    void defragment();
+    std::vector<std::string> loadClusters();
+    std::deque<Fat::dir_position> loadDirectories();
+    int getFreeFolderIndex();
+    void printFatTable();
 };
 
 

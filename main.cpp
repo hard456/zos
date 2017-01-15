@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string>
 #include <stdio.h>
+#include <cstring>
 #include "Fat.h"
 
 Fat* fat;
@@ -40,8 +41,13 @@ void callAction(int argc, char **argv){
             std::cout << "PATH NOT FOUND" << std::endl;
         }
         else{
-            if(fat->addFile(argv[3])){
-                std::cout << "OK" << std::endl;
+            if(strlen(argv[3]) > 13){
+                std::cout << "FILE IS LONGER THAN 13 CHARACTERS" << std::endl;
+            }
+            else{
+                if(fat->addFile(argv[3])){
+                    std::cout << "OK" << std::endl;
+                }
             }
         }
     }
@@ -87,8 +93,13 @@ void callAction(int argc, char **argv){
         compareArgumentNumber(argc,5);
         int index = fat->checkPath(argv[4]);
         if(index == 0 || index == -2){
-            if(fat->addFolder(argv[3])){
-                std::cout << "OK" << std::endl;
+            if(strlen(argv[3]) > 13){
+                std::cout << "FOLDER IS LONGER THAN 13 CHARACTERS" << std::endl;
+            }
+            else{
+                if(fat->addFolder(argv[3])){
+                    std::cout << "OK" << std::endl;
+                }
             }
         }
         else if(index == -1 || index == 1){
@@ -150,6 +161,21 @@ void callAction(int argc, char **argv){
         }
         else{
             fat->tree();
+        }
+
+    }
+    else if(action.compare("-def") == 0){
+        compareArgumentNumber(argc,3);
+        if(!fat->isItemInFolder()){
+            std::cout << "EMPTY" << std::endl;
+        }
+        else{
+            std::cout << "BEFORE DEFRAGMENTING" << std::endl;
+            fat->printFatTable();
+            fat->defragment();
+            std::cout << std::endl;
+            std::cout << "AFTER DEFRAGMENTING" << std::endl;
+            fat->printFatTable();
         }
 
     }

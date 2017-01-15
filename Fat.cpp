@@ -31,7 +31,6 @@ void Fat::closeFatFile() {
 void Fat::loadBootRecord() {
     fseek(f, 0, SEEK_SET); //skok na začátekl
     fread(p_boot_record, sizeof(struct boot_record), 1, f);
-    printfBootRecord();
 }
 
 /**
@@ -48,7 +47,6 @@ void Fat::setBootRecord() {
     p_boot_record->fat_copies = FAT_COPIES;
     p_boot_record->cluster_size = CLUSTER_SIZE;
     p_boot_record->cluster_count = CLUSTER_COUNT;
-    printfBootRecord();
 }
 
 /**
@@ -63,11 +61,6 @@ void Fat::loadFatTable() {
             fread(fat_item, sizeof(*fat_item), 1, f);
             if (j == 0) {
                 fatTable.at(i) = (int32_t) *fat_item;
-                if (fatTable.at(i) == FAT_UNUSED) { printf("%d: %d - FILE_UNUSED \n",i,fatTable.at(i)); }
-                else if (fatTable.at(i) == FAT_FILE_END) { printf("%d: %d - FAT_FILE_END \n",i,fatTable.at(i)); }
-                else if (fatTable.at(i) == FAT_BAD_CLUSTER) { printf("%d: %d - FAT_BAD_CLUSTER \n",i,fatTable.at(i)); }
-                else if (fatTable.at(i) == FAT_DIRECTORY) { printf("%d: %d - FAT_DIRECTORY \n",i,fatTable.at(i)); }
-                else { printf("%d: %d \n",i,fatTable.at(i)); }
             } else {
                 if (fatTable.at(i) != (int32_t) *fat_item) {
                     std::cout << "FAT 0 at index " << i << " does not equal with FAT " << j << "." << std::endl;
@@ -81,16 +74,18 @@ void Fat::loadFatTable() {
 /**
  * Nastaví fat table pro přípdad, že by se vytvářel nová fat soubor
  */
-void Fat::setFatTable() {
-    fatTable.resize(p_boot_record->cluster_count);
+std::vector<int32_t> Fat::setFatTable() {
+    std::vector<int32_t> fat_table;
+    fat_table.resize(p_boot_record->cluster_count);
     for (int i = 0; i < p_boot_record->cluster_count; i++) {
         if(i == 0){
-            fatTable.at(i) = FAT_DIRECTORY;
+            fat_table.at(i) = FAT_DIRECTORY;
         }
         else{
-            fatTable.at(i) = FAT_UNUSED;
+            fat_table.at(i) = FAT_UNUSED;
         }
     }
+    return fat_table;
 }
 
 /**
@@ -103,7 +98,7 @@ void Fat::loadFile() {
 
     if (newfile) {
         setBootRecord();
-        setFatTable();
+        fatTable = setFatTable();
         writeBootRecord();
         writeFatTable();
         writeFreeClusters();
@@ -423,7 +418,7 @@ bool Fat::addFile(char *newFile) {
     fseek(f,sizeof(directory)*emptyFolderIndex,SEEK_CUR);
 
     if ((f_new = fopen(newFile, "r+")) == NULL) {
-        std::cout << "NEW FILE IS NOT EXIST" << std::endl;
+        std::cout << "FILE NOT FOUND" << std::endl;
         return false;
     }
 
@@ -560,6 +555,7 @@ void Fat::writeFatTable() {
  */
 void Fat::writeFreeClusters() {
     char *empty_cluster = (char *) malloc(sizeof(char)*p_boot_record->cluster_size);
+    memset(empty_cluster,'\0',sizeof(char)*p_boot_record->cluster_size);
     for (int i = 0; i < p_boot_record->cluster_count; i++) {
         fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*i,SEEK_SET);
         fwrite(empty_cluster, sizeof(char)*p_boot_record->cluster_size, 1, f);
@@ -612,7 +608,7 @@ void Fat::printTreeItems(){
 }
 
 /**
- * Vrátí počet clusterů souboru
+ * Vrátí počet clusterů souboru podle velikosti
  * @param file_size velikost souboru
  * @return počet clusterů
  */
@@ -621,8 +617,189 @@ int Fat::getNumberOfClusters(int file_size) {
         int fileClusterCount = file_size / p_boot_record->cluster_size;
         return fileClusterCount;
     }
-    else if(file_size / p_boot_record->cluster_size == 0){
+    else{
         int fileClusterCount = file_size / p_boot_record->cluster_size + 1;
         return fileClusterCount;
     }
 }
+
+/**
+ * Defragmentace FAT souboru
+ */
+void Fat::defragment() {
+    int position = 1;
+    int freeFolderIndex = 0;
+    bool isReadyToAdd = true;
+    struct dir_position dir_pos;
+    std::vector<std::string> clusters;
+    std::vector<int32_t> fat_table;
+    std::vector<Fat::dir_position>dir_used;
+    std::deque<Fat::dir_position> directory;
+    fat_table = setFatTable();
+    clusters = loadClusters();
+    directory = loadDirectories();
+    setRootPosition();
+    writeFreeClusters();
+    while(!directory.empty()){
+        dir_pos = directory.front();
+        directory.pop_front();
+        if(dir_pos.parent != 0){
+            for (int i = 0; i < directory.size(); i++) {
+                if(directory.at(i).dir.start_cluster == dir_pos.parent){
+                    directory.push_back(dir_pos);
+                    isReadyToAdd = false;
+                    break;
+                }
+            }
+            if(!isReadyToAdd){
+                isReadyToAdd = true;
+                continue;
+            }
+            else{
+                int parent = 0;
+                int positionInFolder = 0;
+                for (int i = 0; i < dir_used.size(); i++) {
+                    if(dir_used.at(i).old_cluster == dir_pos.parent){
+                        parent = dir_used.at(i).dir.start_cluster;
+                        break;
+                    }
+                }
+
+                fseek(f,rootDirectoryPosition + p_boot_record->cluster_size*parent, SEEK_SET);
+                loadDirectory();
+                for (int j = 0; j < dir.size(); j++) {
+                    if(strcmp(dir.at(j).file_name,dir_pos.dir.file_name) == 0){
+                        positionInFolder = j;
+                        break;
+                    }
+                }
+                fseek(f,rootDirectoryPosition + p_boot_record->cluster_size*parent + sizeof(struct directory)*positionInFolder,SEEK_SET);
+                dir_pos.old_cluster = dir_pos.dir.start_cluster;
+                dir_pos.dir.start_cluster = position;
+                fwrite(&dir_pos.dir, sizeof(struct directory),1,f);
+            }
+        }
+        else {
+            setRootPosition();
+            freeFolderIndex = getFreeFolderIndex();
+            fseek(f, rootDirectoryPosition + sizeof(struct directory) * freeFolderIndex, SEEK_SET);
+            dir_pos.old_cluster = dir_pos.dir.start_cluster;
+            dir_pos.dir.start_cluster = position;
+            fwrite(&dir_pos.dir, sizeof(struct directory), 1, f);
+        }
+            if(!dir_pos.dir.isFile){
+                fseek(f,rootDirectoryPosition + p_boot_record->cluster_size*dir_pos.dir.start_cluster, SEEK_SET);
+                for (int i = 0; i < directory.size(); i++) {
+                    if(directory.at(i).parent == dir_pos.old_cluster){
+                        fwrite(&directory.at(i).dir,sizeof(struct directory),1,f);
+                        fseek(f,sizeof(struct directory),SEEK_CUR);
+                    }
+                }
+                dir_used.push_back(dir_pos);
+                fat_table.at(position) = FAT_DIRECTORY;
+                position++;
+            }
+            else{
+                int clusters_number = getNumberOfClusters(dir_pos.dir.size);
+                std::vector<int32_t> old_clusters;
+                int index = dir_pos.old_cluster;
+                while(true){
+                    if(fatTable.at(index) == FAT_FILE_END){
+                        old_clusters.push_back(index);
+                        break;
+                    }
+                    old_clusters.push_back(index);
+                    index = fatTable.at(index);
+                }
+
+                char *cluster_item;
+
+                for (int i = 0; i < clusters_number; i++) {
+                    cluster_item = (char *) clusters.at(old_clusters.at(i)).c_str();
+                    if(i == (clusters_number-1)){
+                        int remainder = dir_pos.dir.size % p_boot_record->cluster_size;
+                        if(remainder != 0){
+                            char *cluster_item = (char *) malloc(sizeof(char) * (remainder));
+                        }
+                        fseek(f, rootDirectoryPosition + p_boot_record->cluster_size * position, SEEK_SET);
+                        fwrite(cluster_item, sizeof(char)*remainder, 1, f);
+                        fat_table.at(position) = FAT_FILE_END;
+                        position++;
+                    }
+                    else{
+                        fseek(f, rootDirectoryPosition + p_boot_record->cluster_size * position, SEEK_SET);
+                        fwrite(cluster_item, sizeof(char) * p_boot_record->cluster_size, 1, f);
+                        fat_table.at(position) = position+1;
+                        position++;
+                    }
+                }
+        }
+    }
+    fatTable = fat_table;
+}
+
+/**
+ * Načte obsah clusterů do vektoru
+ * @return vrátí vektro clusterů
+ */
+std::vector<std::string> Fat::loadClusters() {
+    std::vector<std::string> clusters;
+    clusters.resize(p_boot_record->cluster_count);
+    char *p_cluster = (char *) malloc(sizeof(char) * (p_boot_record->cluster_size));
+    for (int i = 0; i < p_boot_record->cluster_count; i++) {
+        if(fatTable[i] != FAT_UNUSED && fatTable[i] != FAT_DIRECTORY && fatTable[i] != FAT_BAD_CLUSTER){
+            fseek(f, rootDirectoryPosition + p_boot_record->cluster_size * i, SEEK_SET);
+            fread(p_cluster, sizeof(char) * p_boot_record->cluster_size, 1, f);
+            clusters.at(i) = p_cluster;
+        }
+    }
+    return clusters;
+}
+
+/**
+ * Načtení FAT souborů a adresářů do deque
+ * @return vrátí deque souborů a adresářů
+ */
+std::deque<Fat::dir_position> Fat::loadDirectories() {
+    struct dir_position dir_position;
+    std::deque<struct dir_position> directory;
+    for (int i = 0; i < fatTable[i]; i++) {
+        if(fatTable.at(i) == FAT_DIRECTORY){
+            fseek(f, rootDirectoryPosition + p_boot_record->cluster_size * i, SEEK_SET);
+            loadDirectory();
+            for (int j = 0; j < dir.size(); j++) {
+                if(dir.at(j).file_name[0] != '\0'){
+                    dir_position.dir = dir.at(j);
+                    dir_position.parent = i;
+                    directory.push_back(dir_position);
+                }
+            }
+        }
+    }
+    return directory;
+}
+
+/**
+ * Vrátí prázdný index adresáře
+ * @return prázdný index adresáře
+ */
+int Fat::getFreeFolderIndex(){
+    loadDirectory();
+    for (int i = 0; i < dir.size(); i++) {
+        if(dir.at(i).file_name[0] == '\0'){
+            return i;
+        }
+    }
+    return 0;
+}
+
+void Fat::printFatTable() {
+    for (int i = 0; i < p_boot_record->cluster_count; ++i) {
+        if (fatTable.at(i) == FAT_UNUSED) { printf("%d: %d - FILE_UNUSED \n",i,fatTable.at(i)); }
+        else if (fatTable.at(i) == FAT_FILE_END) { printf("%d: %d - FAT_FILE_END \n",i,fatTable.at(i)); }
+        else if (fatTable.at(i) == FAT_BAD_CLUSTER) { printf("%d: %d - FAT_BAD_CLUSTER \n",i,fatTable.at(i)); }
+        else if (fatTable.at(i) == FAT_DIRECTORY) { printf("%d: %d - FAT_DIRECTORY \n",i,fatTable.at(i)); }
+        else { printf("%d: %d \n",i,fatTable.at(i)); }
+    }
+}
+
