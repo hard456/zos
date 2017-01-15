@@ -41,8 +41,8 @@ void callAction(int argc, char **argv){
             std::cout << "PATH NOT FOUND" << std::endl;
         }
         else{
-            if(strlen(argv[3]) > 13){
-                std::cout << "FILE IS LONGER THAN 13 CHARACTERS" << std::endl;
+            if(strlen(argv[3]) > 12){
+                std::cout << "FILE IS LONGER THAN 12 CHARACTERS" << std::endl;
             }
             else{
                 if(fat->addFile(argv[3])){
@@ -93,8 +93,8 @@ void callAction(int argc, char **argv){
         compareArgumentNumber(argc,5);
         int index = fat->checkPath(argv[4]);
         if(index == 0 || index == -2){
-            if(strlen(argv[3]) > 13){
-                std::cout << "FOLDER IS LONGER THAN 13 CHARACTERS" << std::endl;
+            if(strlen(argv[3]) > 12){
+                std::cout << "FOLDER IS LONGER THAN 12 CHARACTERS" << std::endl;
             }
             else{
                 if(fat->addFolder(argv[3])){
