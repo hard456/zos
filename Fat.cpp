@@ -68,6 +68,7 @@ void Fat::loadFatTable() {
             }
         }
     }
+    free(fat_item);
     rootDirectoryPosition = ftell(f);
 }
 
@@ -134,6 +135,7 @@ void Fat::loadDirectory() {
         dir.at(i) = *dir_item;
     }
     fseek(f, -(sizeof(struct directory) * dir.size()), SEEK_CUR);
+    free(dir_item);
 }
 
 /**
@@ -143,13 +145,13 @@ void Fat::loadDirectory() {
 void Fat::printFileContent(int fatPosition) {
     int actualClusterPosition = 0;
     bool endCycle = false;
+    char *p_cluster = (char *) malloc(sizeof(char) * (p_boot_record->cluster_size));
     while (true) {
         if(endCycle == true){
             break;
         }
         fseek(f, p_boot_record->cluster_size * (fatPosition - actualClusterPosition),
               SEEK_CUR);
-        char *p_cluster = (char *) malloc(sizeof(char) * (p_boot_record->cluster_size));
         fread(p_cluster, sizeof(char) * p_boot_record->cluster_size, 1, f);
         printf("%s",p_cluster);
         fseek(f, -(sizeof(char) * (p_boot_record->cluster_size)), SEEK_CUR);
@@ -160,6 +162,7 @@ void Fat::printFileContent(int fatPosition) {
             endCycle = true;
         }
 }
+    free(p_cluster);
 }
 
 /**
@@ -344,10 +347,11 @@ bool Fat::isFolderEmpty(){
     fread(positionInCluster, sizeof(p_boot_record->cluster_size), 1, f);
     for (int i = 0; i < p_boot_record->cluster_size; i++) {
         if(*positionInCluster != '\0'){
+            free(positionInCluster);
             return false;
         }
     }
-
+    free(positionInCluster);
     return true;
 }
 
@@ -372,6 +376,7 @@ void Fat::deleteFolder(std::string filename) {
     fseek(f,sizeof(struct directory)*(foldePosition),SEEK_CUR);
     struct directory *adr = (struct directory *) malloc(sizeof(struct directory));
     fwrite(adr, sizeof(struct directory), 1, f);
+    free(adr);
     std::cout << "OK" << std::endl;
 }
 
@@ -468,6 +473,7 @@ bool Fat::addFile(char *newFile) {
             fwrite(read, sizeof(char) * p_boot_record->cluster_size, 1, f);
         }
     }
+    free(read);
     return true;
 }
 
@@ -525,6 +531,8 @@ void Fat::deleteFile(std::string fileName, int fileCluster) {
             break;
         }
     }
+    free(empty_cluster);
+    free(file);
     std::cout << "OK" << std::endl;
 }
 
@@ -561,6 +569,7 @@ void Fat::writeFreeClusters() {
         fwrite(empty_cluster, sizeof(char)*p_boot_record->cluster_size, 1, f);
     }
     setRootPosition();
+    free(empty_cluster);
 }
 
 bool Fat::isItemInFolder() {
@@ -717,7 +726,7 @@ void Fat::defragment() {
                 for (int i = 0; i < clusters_number; i++) {
                     cluster_item = (char *) clusters.at(old_clusters.at(i)).c_str();
                     if(i == (clusters_number-1)){
-                        int remainder = dir_pos.dir.size % p_boot_record->cluster_size;
+                        int remainder = sizeof(clusters.at(old_clusters.at(i)));
                         if(remainder != 0){
                             char *cluster_item = (char *) malloc(sizeof(char) * (remainder));
                         }
@@ -753,6 +762,7 @@ std::vector<std::string> Fat::loadClusters() {
             clusters.at(i) = p_cluster;
         }
     }
+    free(p_cluster);
     return clusters;
 }
 
@@ -801,5 +811,9 @@ void Fat::printFatTable() {
         else if (fatTable.at(i) == FAT_DIRECTORY) { printf("%d: %d - FAT_DIRECTORY \n",i,fatTable.at(i)); }
         else { printf("%d: %d \n",i,fatTable.at(i)); }
     }
+}
+
+void Fat::freeBootRecord() {
+    free(p_boot_record);
 }
 

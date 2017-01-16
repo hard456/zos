@@ -37,11 +37,12 @@ void callAction(int argc, char **argv){
     if(action.compare("-a") == 0){
         compareArgumentNumber(argc,5);
         int index = fat->checkPath(argv[4]);
+        std::vector<std::string> path = fat->getPathVector(argv[3]);
         if(index == -1 || index == 1){
             std::cout << "PATH NOT FOUND" << std::endl;
         }
         else{
-            if(strlen(argv[3]) > 12){
+            if(path.at(path.size()-1).length() > 12){
                 std::cout << "FILE IS LONGER THAN 12 CHARACTERS" << std::endl;
             }
             else{
@@ -92,8 +93,9 @@ void callAction(int argc, char **argv){
     else if(action.compare("-m") == 0){
         compareArgumentNumber(argc,5);
         int index = fat->checkPath(argv[4]);
+        std::vector<std::string> path = fat->getPathVector(argv[3]);
         if(index == 0 || index == -2){
-            if(strlen(argv[3]) > 12){
+            if(path.at(path.size()-1).length() > 12){
                 std::cout << "FOLDER IS LONGER THAN 12 CHARACTERS" << std::endl;
             }
             else{
@@ -185,6 +187,7 @@ void callAction(int argc, char **argv){
     fat->writeBootRecord();
     fat->writeFatTable();
     fat->closeFatFile();
+    fat->freeBootRecord();
 }
 
 /**

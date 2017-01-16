@@ -95,6 +95,7 @@ public:
     std::deque<Fat::dir_position> loadDirectories();
     int getFreeFolderIndex();
     void printFatTable();
+    void freeBootRecord();
 };
 
 
