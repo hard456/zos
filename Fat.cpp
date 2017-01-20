@@ -1,7 +1,5 @@
 
 #include "Fat.h"
-
-#include <stdio.h>
 #include <iostream>
 #include <string.h>
 
@@ -263,6 +261,7 @@ void Fat::printfFileClusterIndexes(int index) {
         index = fatTable.at(index);
 
     }
+    std::cout << std::endl;
 }
 
 /**
@@ -277,6 +276,12 @@ bool Fat::addFolder(char *newFolder) {
     if(clusterStartIndex == -1){
         indexInputCluster = 0;
     }
+
+    std::vector<int> free_positions = getFreeTableArray(1);
+    if(free_positions.size() == 0){
+        return false;
+    }
+
     fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*indexInputCluster,SEEK_SET);
     loadDirectory();
     fseek(f,rootDirectoryPosition+p_boot_record->cluster_size*indexInputCluster,SEEK_SET);
@@ -441,6 +446,10 @@ bool Fat::addFile(char *newFile) {
     }
 
     std::vector<int> free_positions = getFreeTableArray(count_cluster);
+
+    if(free_positions.size() != count_cluster){
+        return false;
+    }
 
     struct directory file;
     memset(file.file_name,'\0',sizeof(file.file_name));
@@ -726,9 +735,10 @@ void Fat::defragment() {
                 for (int i = 0; i < clusters_number; i++) {
                     cluster_item = (char *) clusters.at(old_clusters.at(i)).c_str();
                     if(i == (clusters_number-1)){
-                        int remainder = sizeof(clusters.at(old_clusters.at(i)));
+                        int remainder = dir_pos.dir.size % p_boot_record->cluster_size;
                         if(remainder != 0){
-                            char *cluster_item = (char *) malloc(sizeof(char) * (remainder));
+                            cluster_item = (char *) malloc(sizeof(char) * (remainder));
+                            cluster_item = (char *) clusters.at(old_clusters.at(i)).c_str();
                         }
                         fseek(f, rootDirectoryPosition + p_boot_record->cluster_size * position, SEEK_SET);
                         fwrite(cluster_item, sizeof(char)*remainder, 1, f);

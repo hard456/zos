@@ -49,6 +49,9 @@ void callAction(int argc, char **argv){
                 if(fat->addFile(argv[3])){
                     std::cout << "OK" << std::endl;
                 }
+                else{
+                    std::cout << "FAT IS FULL" << std::endl;
+                }
             }
         }
     }
@@ -101,6 +104,9 @@ void callAction(int argc, char **argv){
             else{
                 if(fat->addFolder(argv[3])){
                     std::cout << "OK" << std::endl;
+                }
+                else{
+                    std::cout << "FAT IS FULL" << std::endl;
                 }
             }
         }
